@@ -340,7 +340,12 @@ def get_outbox_dispatcher(
     """Get or instantiate the global singleton OutboxDispatcher."""
     global _GLOBAL_OUTBOX_DISPATCHER
     with _GLOBAL_DISPATCHER_LOCK:
-        if _GLOBAL_OUTBOX_DISPATCHER is None or force_new:
+        needs_new = (
+            _GLOBAL_OUTBOX_DISPATCHER is None
+            or force_new
+            or (store is not None and getattr(_GLOBAL_OUTBOX_DISPATCHER, "store", None) is not store)
+        )
+        if needs_new:
             _GLOBAL_OUTBOX_DISPATCHER = OutboxDispatcher(
                 store=store,
                 handler=handler,
@@ -348,3 +353,15 @@ def get_outbox_dispatcher(
                 owner_id=owner_id,
             )
         return _GLOBAL_OUTBOX_DISPATCHER
+
+
+def reset_outbox_dispatcher() -> None:
+    """Reset the global OutboxDispatcher singleton instance (used for test isolation)."""
+    global _GLOBAL_OUTBOX_DISPATCHER
+    with _GLOBAL_DISPATCHER_LOCK:
+        if _GLOBAL_OUTBOX_DISPATCHER is not None:
+            try:
+                _GLOBAL_OUTBOX_DISPATCHER.stop(timeout=1.0)
+            except Exception:
+                pass
+            _GLOBAL_OUTBOX_DISPATCHER = None

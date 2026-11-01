@@ -5,7 +5,7 @@ from .cleanup import (
     get_replay_cleanup_scheduler,
     reset_replay_cleanup_scheduler,
 )
-from .dispatcher import OutboxDispatcher, get_outbox_dispatcher
+from .dispatcher import OutboxDispatcher, get_outbox_dispatcher, reset_outbox_dispatcher
 from .handler import NotificationDeliveryResult, NotificationHandler, TestNotificationHandler
 from .registry import get_notification_handler, register_notification_provider
 from .security import SsrfProtectionError, is_forbidden_ip, validate_webhook_url
@@ -47,6 +47,7 @@ __all__ = [
     "is_forbidden_ip",
     "parse_signature_header",
     "register_notification_provider",
+    "reset_outbox_dispatcher",
     "reset_replay_cleanup_scheduler",
     "validate_webhook_url",
     "verify_webhook_signature",

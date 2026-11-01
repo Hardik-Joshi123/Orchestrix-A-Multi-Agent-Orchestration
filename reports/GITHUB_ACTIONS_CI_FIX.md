@@ -166,10 +166,11 @@ identified 12 runtime test failures across the matrix:
    - **Fix**: Removed the catch-all exception swallow in `_run_fallback` so that real bugs and exploding nodes
      properly propagate as `RuntimeError` as mandated by the architectural contract.
 
-5. **Transactional Outbox Configuration Mocking**:
-   - `test_outbox_api_routes` failed when outbox settings were not properly propagated to the store.
-   - **Fix**: Strengthened `app_client` in `tests/test_transactional_outbox.py` using `pytest.MonkeyPatch`
-     to keep `get_settings()` pinned throughout the test lifetime.
+5. **Transactional Outbox Dispatcher Singleton Isolation**:
+   - `test_outbox_api_routes` failed with `assert 0 >= 1` during the dispatch cycle because `OutboxDispatcher`
+     retained a stale process-wide singleton bound to an earlier test's database store.
+   - **Fix**: Added store re-binding validation and `reset_outbox_dispatcher()` in
+     `src/orchestrator/notifications/dispatcher.py`, resetting the dispatcher in `app_client`.
 
 6. **End-to-End Test Database Store Isolation**:
    - `test_scenario_c_transient_failure_recovers_on_retry` failed due to reusing terminal run IDs against
@@ -187,9 +188,11 @@ identified 12 runtime test failures across the matrix:
 | `requirements.txt` | Added `PyYAML>=6.0` |
 | `Dockerfile` | Added `ui/` context copy to support setuptools package discovery |
 | `src/orchestrator/api/manager.py` | Added `reset_run_manager()` for process singleton test isolation |
+| `src/orchestrator/notifications/dispatcher.py` | Added store re-binding and `reset_outbox_dispatcher()` |
+| `src/orchestrator/notifications/__init__.py` | Exported `reset_outbox_dispatcher` |
 | `src/orchestrator/graph/builder.py` | Propagated unhandled node exceptions out of `_run_fallback` |
 | `tests/test_setup_packaging.py` | Reset `RunManager` singleton before testing `/health` |
-| `tests/test_transactional_outbox.py` | Monkeypatched `get_settings()` across the full fixture scope |
+| `tests/test_transactional_outbox.py` | Reset `OutboxDispatcher` and monkeypatched `get_settings()` |
 | `tests/test_end_to_end.py` | Isolated database store in `test_scenario_c` tests |
 | `.github/workflows/ci.yml` | Added critical import verification step, updated lint and test invocations |
 | `ui/review_app.py` | Sorted import blocks to comply with Ruff I001 |

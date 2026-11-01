@@ -12,7 +12,10 @@ from fastapi.testclient import TestClient
 from orchestrator.api.routes import get_settings, get_store
 from orchestrator.api.server import create_app
 from orchestrator.config import Settings
-from orchestrator.notifications.dispatcher import OutboxDispatcher
+from orchestrator.notifications.dispatcher import (
+    OutboxDispatcher,
+    reset_outbox_dispatcher,
+)
 from orchestrator.notifications.handler import TestNotificationHandler
 from orchestrator.persistence.store import (
     CheckpointStore,
@@ -35,6 +38,7 @@ def store(temp_db: str) -> CheckpointStore:
 @pytest.fixture
 def app_client(temp_db: str, store: CheckpointStore, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """Return a TestClient bound to a configured test app."""
+    reset_outbox_dispatcher()
     settings = Settings(
         checkpoint_db_path=temp_db,
         api_token="test-secret-token",
