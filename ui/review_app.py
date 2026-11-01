@@ -21,14 +21,6 @@ sys.path.insert(0, str(_PROJECT_ROOT / "src"))
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 import streamlit as st  # noqa: E402
-from ui.dashboard_helpers import (  # noqa: E402
-    check_resume_eligibility,
-    classify_subtasks,
-    format_checkpoint_records,
-    format_cost_display,
-    format_status_badge,
-    sanitize_ui_error,
-)
 
 from orchestrator.api.client import (  # noqa: E402
     ApiAuthenticationError,
@@ -47,6 +39,14 @@ from orchestrator.hitl.auth import (  # noqa: E402
     session_expired,
 )
 from orchestrator.hitl.queue import ReviewQueue  # noqa: E402
+from ui.dashboard_helpers import (  # noqa: E402
+    check_resume_eligibility,
+    classify_subtasks,
+    format_checkpoint_records,
+    format_cost_display,
+    format_status_badge,
+    sanitize_ui_error,
+)
 
 # -----------------------------------------------------------------------------
 # Page Configuration & Styling
