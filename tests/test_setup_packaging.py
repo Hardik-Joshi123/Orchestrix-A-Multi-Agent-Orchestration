@@ -13,6 +13,7 @@ import ui.dashboard_helpers as dashboard_helpers_mod
 from fastapi.testclient import TestClient
 
 import orchestrator
+from orchestrator.api.manager import reset_run_manager
 from orchestrator.api.server import create_app
 from orchestrator.config import get_settings
 from orchestrator.llm import LLMClient
@@ -122,6 +123,7 @@ def test_env_example_template_validity():
 
 def test_api_app_routes_and_offline_health():
     """Verify FastAPI application instantiates offline and serves /health route."""
+    reset_run_manager()
     app = create_app()
     route_paths = set()
     for route in app.routes:

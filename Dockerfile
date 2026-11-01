@@ -34,6 +34,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application source code
 COPY --chown=orchestrator:orchestrator README.md ./
 COPY --chown=orchestrator:orchestrator src/ ./src/
+COPY --chown=orchestrator:orchestrator ui/ ./ui/
 
 # Install application package in editable mode without reinstalling dependencies
 RUN pip install --no-cache-dir --no-deps -e .

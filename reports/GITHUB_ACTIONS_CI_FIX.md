@@ -137,13 +137,60 @@ All checks passed!
 
 ---
 
-## 5. File Modification Summary
+## 5. Runtime Test Execution Stabilization
+
+Following the complete resolution of the 45 test collection errors, the initial full test suite execution
+identified 12 runtime test failures across the matrix:
+
+1. **Missing `uvicorn` and `redis` in CI Test Environment**:
+   - `test_cli_rejects_unsafe_non_loopback_serve` failed because `uvicorn` was absent in the runner.
+   - `test_healthcheck_module_api_probe` and 4 Celery execution tests failed because `redis` was absent.
+   - **Fix**: Added `uvicorn>=0.24.0` and `redis>=5.0.0` to both `test` and `dev` optional-dependencies
+     in `pyproject.toml`.
+
+2. **Dockerfile Packaging Context Missing `ui/`**:
+   - `test_real_docker_image_build` and `test_real_docker_compose_stack_lifecycle` failed because `Dockerfile`
+     only copied `src/`, while `pyproject.toml` declared `ui = "ui"`.
+   - **Fix**: Added `COPY --chown=orchestrator:orchestrator ui/ ./ui/` before `pip install -e .`
+     in `Dockerfile`.
+
+3. **API `RunManager` Singleton State Isolation**:
+   - `test_api_app_routes_and_offline_health` failed when preceding tests initiated graceful shutdown,
+     leaving `_DEFAULT_MANAGER.is_shutting_down = True`.
+   - **Fix**: Implemented `reset_run_manager()` in `src/orchestrator/api/manager.py` and invoked it in
+     `tests/test_setup_packaging.py` for clean test isolation.
+
+4. **Unhandled Node Exception Propagation**:
+   - `test_real_node_error_is_not_swallowed` failed because `_run_fallback` swallowed unexpected node
+     exceptions into failed subtask dictionaries.
+   - **Fix**: Removed the catch-all exception swallow in `_run_fallback` so that real bugs and exploding nodes
+     properly propagate as `RuntimeError` as mandated by the architectural contract.
+
+5. **Transactional Outbox Configuration Mocking**:
+   - `test_outbox_api_routes` failed when outbox settings were not properly propagated to the store.
+   - **Fix**: Strengthened `app_client` in `tests/test_transactional_outbox.py` using `pytest.MonkeyPatch`
+     to keep `get_settings()` pinned throughout the test lifetime.
+
+6. **End-to-End Test Database Store Isolation**:
+   - `test_scenario_c_transient_failure_recovers_on_retry` failed due to reusing terminal run IDs against
+     the default database path.
+   - **Fix**: Bound `test_scenario_c` to the temporary `store` fixture for clean database isolation.
+
+---
+
+## 6. File Modification Summary
 
 | File | Change Description |
 |---|---|
 | `ui/__init__.py` | Created package initialization file for `ui` |
-| `pyproject.toml` | Added `test` extra, updated `dev`, added `package-dir`, set `pythonpath = ["src", "."]` |
+| `pyproject.toml` | Added `test` extra with `uvicorn`, `redis`, `celery`, `package-dir`, `pythonpath` |
 | `requirements.txt` | Added `PyYAML>=6.0` |
+| `Dockerfile` | Added `ui/` context copy to support setuptools package discovery |
+| `src/orchestrator/api/manager.py` | Added `reset_run_manager()` for process singleton test isolation |
+| `src/orchestrator/graph/builder.py` | Propagated unhandled node exceptions out of `_run_fallback` |
+| `tests/test_setup_packaging.py` | Reset `RunManager` singleton before testing `/health` |
+| `tests/test_transactional_outbox.py` | Monkeypatched `get_settings()` across the full fixture scope |
+| `tests/test_end_to_end.py` | Isolated database store in `test_scenario_c` tests |
 | `.github/workflows/ci.yml` | Added critical import verification step, updated lint and test invocations |
 | `ui/review_app.py` | Sorted import blocks to comply with Ruff I001 |
 | `reports/GITHUB_ACTIONS_CI_FIX.md` | Comprehensive investigation and verification deliverable |

@@ -469,34 +469,7 @@ def _execute_subtask_with_review(
 
         except Exception as exc:
             logger.exception("Unexpected exception executing subtask %s: %s", subtask.get("id"), exc)
-            failed_subtask: Subtask = {
-                **subtask,
-                "status": "failed",
-                "result": "",
-                "confidence": 0.0,
-                "error": f"Execution failed: {type(exc).__name__}: {exc}",
-                "tools_used": list(set(accumulated_tools)),
-            }
-            fail_event = create_trace_event(
-                node="scheduler",
-                event="failure",
-                run_id=run_id,
-                subtask=subtask.get("id", ""),
-                subtask_id=subtask.get("id", ""),
-                error=str(exc),
-            )
-            accumulated_trace.append(fail_event)
-            return {
-                "subtask": failed_subtask,
-                "quality": 0.0,
-                "confidence": 0.0,
-                "tools_used": list(set(accumulated_tools)),
-                "trace": accumulated_trace,
-                "escalated": False,
-                "approval": "",
-                "escalations": [],
-                "retries": retry_count,
-            }
+            raise
 
 
 def _run_fallback(
@@ -802,30 +775,9 @@ def _run_fallback(
                         res = fut.result()
                     except Exception as fut_err:
                         logger.exception("Worker future failed for %s: %s", subtask.get("id"), fut_err)
-                        failed_subtask: Subtask = {
-                            **subtask,
-                            "status": "failed",
-                            "result": "",
-                            "confidence": 0.0,
-                            "error": f"Worker failure: {type(fut_err).__name__}: {fut_err}",
-                            "tools_used": [],
-                        }
-                        res = {
-                            "subtask": failed_subtask,
-                            "tools_used": [],
-                            "trace": [
-                                create_trace_event(
-                                    node="scheduler",
-                                    event="failure",
-                                    run_id=run_id,
-                                    subtask=subtask["id"],
-                                    subtask_id=subtask["id"],
-                                    error=str(fut_err),
-                                )
-                            ],
-                            "escalated": False,
-                            "retries": 0,
-                        }
+                        for remaining_fut in list(in_flight.keys()):
+                            remaining_fut.cancel()
+                        raise
 
                     # Merge result into main thread state
                     st = res["subtask"]

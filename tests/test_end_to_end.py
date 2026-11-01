@@ -307,7 +307,7 @@ def test_scenario_b_partial_failure_and_dependency_blocking(store, monkeypatch):
 # ============================================================================
 
 
-def test_scenario_c_transient_failure_recovers_on_retry():
+def test_scenario_c_transient_failure_recovers_on_retry(store):
     """Verify that a transient network failure retries boundedly and recovers successfully."""
     call_attempts = {"count": 0}
 
@@ -320,7 +320,12 @@ def test_scenario_c_transient_failure_recovers_on_retry():
     plan = [{"id": "s1", "kind": "analysis", "instruction": "Analyze memory footprint"}]
 
     with patch("orchestrator.graph.specialists.LLMClient.complete", side_effect=flaky_complete):
-        result = run_task("Check memory footprint", plan=plan, run_id="e2e-retry-recover-01")
+        result = run_task(
+            "Check memory footprint",
+            plan=plan,
+            run_id="e2e-retry-recover-01",
+            store=store,
+        )
 
     assert call_attempts["count"] == 2
     assert result["retries"] == 1
@@ -336,7 +341,7 @@ def test_scenario_c_transient_failure_recovers_on_retry():
     assert short.get("status") == "completed"
 
 
-def test_scenario_c_permanent_failure_exhausts_retries_and_escalates():
+def test_scenario_c_permanent_failure_exhausts_retries_and_escalates(store):
     """Verify persistent failure exhausts max_retries, escalates to HITL, and isolates memory."""
     settings = get_settings()
 
@@ -344,7 +349,11 @@ def test_scenario_c_permanent_failure_exhausts_retries_and_escalates():
         "orchestrator.graph.specialists.LLMClient.complete",
         side_effect=RuntimeError("Persistent fatal outage"),
     ):
-        result = run_task("Compute mission-critical projection", run_id="e2e-retry-exhaust-01")
+        result = run_task(
+            "Compute mission-critical projection",
+            run_id="e2e-retry-exhaust-01",
+            store=store,
+        )
 
     # Retries reached limit
     assert result["retries"] >= settings.max_retries

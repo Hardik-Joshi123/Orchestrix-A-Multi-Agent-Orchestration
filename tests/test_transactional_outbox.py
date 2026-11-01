@@ -33,7 +33,7 @@ def store(temp_db: str) -> CheckpointStore:
 
 
 @pytest.fixture
-def app_client(temp_db: str, store: CheckpointStore) -> TestClient:
+def app_client(temp_db: str, store: CheckpointStore, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """Return a TestClient bound to a configured test app."""
     settings = Settings(
         checkpoint_db_path=temp_db,
@@ -41,13 +41,14 @@ def app_client(temp_db: str, store: CheckpointStore) -> TestClient:
         outbox_enabled=True,
         outbox_dispatcher_enabled=False,
     )
-    with patch("orchestrator.api.routes.get_settings", return_value=settings), patch(
-        "orchestrator.api.server.get_settings", return_value=settings
-    ), patch("orchestrator.notifications.dispatcher.get_settings", return_value=settings):
-        app = create_app()
-        app.dependency_overrides[get_settings] = lambda: settings
-        app.dependency_overrides[get_store] = lambda: store
-        return TestClient(app)
+    monkeypatch.setattr("orchestrator.config.get_settings", lambda: settings)
+    monkeypatch.setattr("orchestrator.api.routes.get_settings", lambda: settings)
+    monkeypatch.setattr("orchestrator.api.server.get_settings", lambda: settings)
+    monkeypatch.setattr("orchestrator.notifications.dispatcher.get_settings", lambda: settings)
+    app = create_app()
+    app.dependency_overrides[get_settings] = lambda: settings
+    app.dependency_overrides[get_store] = lambda: store
+    return TestClient(app)
 
 
 def test_outbox_atomic_insert_with_approval(store: CheckpointStore) -> None:

@@ -1607,3 +1607,10 @@ def get_run_manager() -> RunManager:
             if _DEFAULT_MANAGER is None:
                 _DEFAULT_MANAGER = RunManager()
     return _DEFAULT_MANAGER
+
+
+def reset_run_manager() -> None:
+    """Reset the process-wide RunManager singleton instance (used for test isolation)."""
+    global _DEFAULT_MANAGER
+    with _MANAGER_LOCK:
+        _DEFAULT_MANAGER = None
