@@ -1,0 +1,112 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: orchestrator-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: orchestrator-api
+    restart: unless-stopped
+    command: ["python", "-m", "orchestrator", "--serve", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    environment:
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - ORCHESTRATOR_API_TOKEN=${ORCHESTRATOR_API_TOKEN:-production-secret-token}
+      - CHECKPOINT_DB_PATH=/app/data/orchestrator_checkpoints.db
+      - CHECKPOINT_ENABLED=true
+      - CELERY_ENABLED=true
+      - ORCHESTRATOR_WORKFLOW_EXECUTION_BACKEND=celery
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_TASK_DEFAULT_QUEUE=orchestrator_workflows
+      - DEFAULT_LLM_PROVIDER=${DEFAULT_LLM_PROVIDER:-mock}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - API_RATE_LIMIT_ENABLED=true
+      - API_RATE_LIMIT_REQUESTS=60
+      - API_RATE_LIMIT_WINDOW_SECONDS=60.0
+      - API_TRUSTED_PROXIES=127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+    volumes:
+      - orchestrator_data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    stop_signal: SIGTERM
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: orchestrator-worker
+    restart: unless-stopped
+    command:
+      [
+        "celery",
+        "-A",
+        "orchestrator.celery_app",
+        "worker",
+        "-l",
+        "info",
+        "-Q",
+        "orchestrator_workflows",
+        "-c",
+        "4",
+      ]
+    environment:
+      - CHECKPOINT_DB_PATH=/app/data/orchestrator_checkpoints.db
+      - CHECKPOINT_ENABLED=true
+      - CELERY_ENABLED=true
+      - ORCHESTRATOR_WORKFLOW_EXECUTION_BACKEND=celery
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_TASK_DEFAULT_QUEUE=orchestrator_workflows
+      - CELERY_WORKER_CONCURRENCY=4
+      - CELERY_WORKER_HEARTBEAT_INTERVAL_SECONDS=15.0
+      - CELERY_WORKER_STALE_THRESHOLD_SECONDS=60.0
+      - CELERY_WORKFLOW_STUCK_THRESHOLD_SECONDS=300.0
+      - DEFAULT_LLM_PROVIDER=${DEFAULT_LLM_PROVIDER:-mock}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - orchestrator_data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-m", "orchestrator.healthcheck", "--role", "worker"]
+      interval: 20s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+
+volumes:
+  orchestrator_data:
+    driver: local
+  redis_data:
+    driver: local

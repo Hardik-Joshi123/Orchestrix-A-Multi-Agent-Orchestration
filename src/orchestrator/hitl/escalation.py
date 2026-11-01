@@ -1,0 +1,105 @@
+"""Escalation: pause execution, package context, push to the review queue.
+
+Approval levels:
+  NOTIFY         — inform a human, keep going
+  APPROVE_ACTION — block on approval of the next concrete action
+  APPROVE_PLAN   — block on approval of the whole plan
+  TAKE_OVER      — hand control to a human entirely
+"""
+
+from __future__ import annotations
+
+from enum import Enum
+from typing import TYPE_CHECKING
+
+from ..observability.tracing import create_trace_event, span
+from .queue import ReviewItem, ReviewQueue
+
+if TYPE_CHECKING:
+    # Type-only import: importing graph.state at runtime would pull in the graph
+    # package (and builder), which imports this module back — a circular import.
+    from ..graph.state import GraphState
+
+
+class ApprovalLevel(str, Enum):
+    NOTIFY = "notify"
+    APPROVE_ACTION = "approve_action"
+    APPROVE_PLAN = "approve_plan"
+    TAKE_OVER = "take_over"
+
+
+# Which approval level each escalation reason demands.
+_REASON_TO_LEVEL = {
+    "low_confidence": ApprovalLevel.APPROVE_ACTION,
+    "low_quality": ApprovalLevel.APPROVE_ACTION,
+    "repeated_failure": ApprovalLevel.APPROVE_PLAN,
+    "specialist_failure": ApprovalLevel.APPROVE_PLAN,
+    "side_effecting_tool": ApprovalLevel.APPROVE_ACTION,
+    "sensitive_operation": ApprovalLevel.TAKE_OVER,
+}
+
+
+def escalate(state: GraphState) -> GraphState:
+    """Package the current context and enqueue it for human review."""
+    reason = state.get("escalation_reason", "low_confidence")
+    level = _REASON_TO_LEVEL.get(reason, ApprovalLevel.NOTIFY)
+    run_id = state.get("run_id") or state.get("task_id", "")
+
+    with span("hitl.escalate", run_id=run_id, reason=reason, level=level.value):
+        completed = state.get("completed", [])
+        subtask_id = state.get("escalated_subtask_id", "")
+        escalated_subtask = None
+        if subtask_id:
+            for c in completed:
+                if c.get("id") == subtask_id:
+                    escalated_subtask = c
+                    break
+        elif len(completed) == 1:
+            escalated_subtask = completed[0]
+            subtask_id = escalated_subtask.get("id", "")
+
+        proposed_action = ""
+        if escalated_subtask:
+            if escalated_subtask.get("result"):
+                proposed_action = escalated_subtask["result"]
+            elif escalated_subtask.get("error"):
+                proposed_action = f"[Failed: {escalated_subtask['error']}]"
+        item = ReviewItem(
+            task_id=state.get("task_id", "unknown"),
+            task=state.get("task", ""),
+            reason=reason,
+            level=level.value,
+            proposed_action=proposed_action,
+            confidence=state.get("confidence", 0.0),
+            quality=state.get("quality", 0.0),
+            memories=[],
+            subtask_id=subtask_id,
+        )
+        ReviewQueue().push(item)
+
+    return {
+        "escalated": True,
+        "approval": level.value,
+        # Append to the accumulating record so a run that escalates on more than
+        # one subtask keeps every escalation, not just the most recent.
+        "escalations": [
+            {
+                "task_id": item.task_id,
+                "subtask_id": subtask_id,
+                "reason": reason,
+                "level": level.value,
+                "proposed_action": item.proposed_action,
+            }
+        ],
+        "trace": [
+            create_trace_event(
+                node="hitl",
+                event="escalate",
+                run_id=run_id,
+                reason=reason,
+                level=level.value,
+                subtask=subtask_id,
+                subtask_id=subtask_id,
+            )
+        ],
+    }

@@ -1,0 +1,52 @@
+# Git and VCS
+.git
+.github
+.gitignore
+
+# Python bytecode and packaging
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+build
+dist
+*.egg-info
+.eggs
+
+# Virtual environments
+.venv
+venv
+ENV
+env
+
+# Testing, caching, and reports
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.coverage
+.coverage.*
+htmlcov
+reports
+
+# Local SQLite databases, WAL files, and logs
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.log
+orchestrator_checkpoints.db*
+chroma_data
+
+# IDE and OS files
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+*.swp
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.docker.example
