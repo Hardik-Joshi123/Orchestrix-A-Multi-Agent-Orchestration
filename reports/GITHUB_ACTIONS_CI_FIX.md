@@ -48,6 +48,12 @@ During dependency resolution, `pytest>=8.0` without an upper bound permitted pip
 `pytest 9.2.0`. Pytest 9 removed the internal `FixtureManager._arg2fixturedefs` attribute, causing collection
 crashes with pre-installed ecosystem plugins. Pinning `pytest>=8.0,<9.0` ensures deterministic stability.
 
+### 2.5 Celery Task Export & Missing Worker Dependency
+`tests/test_celery_execution.py` and `tests/test_celery_failure_injection.py` import `execute_workflow_run`
+and `resume_workflow_run` from `orchestrator.celery_app`. When Celery was absent, those symbols were not
+registered into module globals. We added `celery>=5.4.0` to the test dependencies and introduced graceful
+fallback task stubs in `orchestrator.celery_app` for offline resilience.
+
 ---
 
 ## 3. Remediation & Implementation Details
@@ -58,6 +64,10 @@ crashes with pre-installed ecosystem plugins. Pinning `pytest>=8.0,<9.0` ensures
   - `pytest-cov>=5.0`
   - `fastapi>=0.104.0`
   - `httpx>=0.25.0`
+  - `starlette>=0.27.0`
+  - `PyYAML>=6.0`
+  - `celery>=5.4.0`
+  - `ruff>=0.5.0`
   - `starlette>=0.27.0`
   - `PyYAML>=6.0`
   - `ruff>=0.5.0`
