@@ -416,3 +416,15 @@ if _CELERY_AVAILABLE:
 else:
     celery_app = None
     app = None
+
+# Ensure task symbols are always resolvable at module import time even if Celery is unavailable
+if "execute_workflow_run" not in globals():
+
+    def execute_workflow_run(*args: Any, **kwargs: Any) -> Any:
+        return _execute_workflow_run_impl(*args, **kwargs)
+
+if "resume_workflow_run" not in globals():
+
+    def resume_workflow_run(*args: Any, **kwargs: Any) -> Any:
+        return _resume_workflow_run_impl(*args, **kwargs)
+

@@ -32,7 +32,7 @@ jobs:
         run: |
           python -c "import orchestrator; print('orchestrator:', orchestrator.__version__)"
           python -c "import ui.api_client, ui.dashboard_helpers; print('ui package: OK')"
-          python -c "import fastapi, httpx, starlette, yaml; print('test dependencies: OK')"
+          python -c "import fastapi, httpx, starlette, yaml, celery; print('test dependencies: OK')"
 
       - name: Lint
         run: ruff check src tests ui
