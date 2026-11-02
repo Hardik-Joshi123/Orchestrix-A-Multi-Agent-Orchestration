@@ -20,6 +20,7 @@ env/
 .mypy_cache/
 .ruff_cache/
 .coverage
+coverage.xml
 htmlcov/
 
 # Data stores / local artifacts
@@ -31,9 +32,14 @@ htmlcov/
 backups/
 chroma/
 chromadb/
+data/
 *.log
+
+# Personal reports & task logs
+reports/
 
 # OS / editor
 .DS_Store
 .idea/
 .vscode/
+.claude/

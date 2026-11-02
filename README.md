@@ -229,7 +229,6 @@ multi-agent-orchestrator/
 |   |-- 02_human_approval_flow.py # Sensitive task escalation and HITL safety gate
 |   |-- 03_api_client_usage.py  # Programmatic REST API usage and checkpoint inspection
 |   |-- 04_backup_and_manifest_verify.py # Online backup, HMAC signing, and manifest verification
-|-- reports/                    # Complete engineering verification reports (Tasks 1-66)
 |-- src/orchestrator/
 |   |-- __init__.py             # Package version (0.1.0)
 |   |-- __main__.py             # CLI entry point (python -m orchestrator)
