@@ -438,6 +438,31 @@ sequenceDiagram
 
 ---
 
+## 🖥️ Human-in-the-Loop Review Console
+
+Orchestrix provides an interactive review interface where human operators can inspect agent-proposed
+actions, evaluate execution reasoning, and make authoritative approval decisions before sensitive
+operations proceed to execution.
+
+![Orchestrix Human-in-the-Loop Review Console](docs/images/review-console.png)
+*Figure: Orchestrix Human-in-the-Loop Review Console — interactive queue for escalated agent actions.*
+
+### Key Console Capabilities
+
+- **Pending Review Queue**: Real-time queue displaying agent actions requiring human evaluation.
+- **Human Decisions**: Authoritative intervention choices to **Approve**, **Reject**, **Edit**, or
+  **Take Over** pending operations.
+- **Confidence & Quality Indicators**: Live scoring metrics displaying agent confidence and evaluation
+  quality scores directly beside review items.
+- **Proposed Action & Reasoning**: Monospace preview box displaying detailed specialist findings,
+  agent reasoning, and tool invocation payloads.
+- **Task Submission & Execution**: Interactive sidebar providing direct workflow submission, execution
+  triggers, and real-time status indicators.
+- **Escalation Visibility**: Explicit policy classification badges highlighting escalation triggers
+  (e.g., `sensitive_operation`) and graded severity tiers (e.g., `take_over`).
+
+---
+
 ## 11. Reliability & Disaster Recovery
 
 ### Checkpointing & Step Resumption
